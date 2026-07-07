@@ -1,0 +1,92 @@
+-- RainHub V2 - Advanced Custom UI Engine.
+-- Author: GODSCRIPTOR (For VORD).
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local localPlayer = Players.LocalPlayer
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "RainHubV2"
+
+-- [UI BUILDER CLASS]
+local UI = {}
+UI.__index = UI
+
+function UI.new(name, size, pos)
+    local frame = Instance.new("Frame", gui)
+    frame.Name = name
+    frame.Size = size
+    frame.Position = pos
+    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    frame.BorderSizePixel = 0
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+    Instance.new("UIStroke", frame).Color = Color3.fromRGB(40, 40, 50)
+    return frame
+end
+
+-- [COMPONENTS]
+local MainFrame = UI.new("Main", UDim2.new(0, 750, 0, 500), UDim2.new(0.5, -375, 0.5, -250))
+local Sidebar = UI.new("Sidebar", UDim2.new(0, 150, 1, 0), UDim2.new(0, 0, 0, 0))
+-- Sidebar styling...
+local Content = UI.new("Content", UDim2.new(1, -150, 1, 0), UDim2.new(0, 150, 0, 0))
+Content.BackgroundTransparency = 1
+
+-- [LOGIC MODULES]
+local Engine = {
+    Aimbot = { Mode = "Normal", Fov = 100, Enabled = false },
+    ESP = { Box = false, Line = false, Skeleton = false },
+    Teleport = {}
+}
+
+-- [AIMBOT LOGIC - OPTIMIZED]
+local function getClosestPlayer()
+    local target, maxDist = nil, math.huge
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= localPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(p.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local dist = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
+                if dist < Engine.Aimbot.Fov and dist < maxDist then
+                    target = p.Character.HumanoidRootPart
+                    maxDist = dist
+                end
+            end
+        end
+    end
+    return target
+end
+
+-- [TELEPORT UI - DYNAMIC]
+local function updateTeleportList()
+    -- Clear previous buttons
+    for _, child in pairs(Content:GetChildren()) do if child.Name == "PlayerButton" then child:Destroy() end end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        local btn = Instance.new("TextButton", Content)
+        btn.Name = "PlayerButton"
+        btn.Text = player.Name
+        btn.MouseButton1Click:Connect(function()
+            localPlayer.Character.HumanoidRootPart.CFrame = player.Character.HumanoidRootPart.CFrame
+        end)
+    end
+end
+
+-- [MAIN LOOP]
+RunService.RenderStepped:Connect(function()
+    if Engine.Aimbot.Enabled then
+        local target = getClosestPlayer()
+        if target then
+            if Engine.Aimbot.Mode == "Rage" then
+                workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
+            elseif Engine.Aimbot.Mode == "Normal" then
+                -- Add smoothing interpolation here
+            end
+        end
+    end
+    
+    -- ESP Rendering goes here using Drawing API
+end)
+
+print("[RAINHUB] Engine Fully Loaded. VORD command awaiting. ⚡")
