@@ -1,0 +1,61 @@
+-- RainHub Compact - VORD Edition.
+-- Fixed layout, draggable, window controls.
+
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+
+local localPlayer = Players.LocalPlayer
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "RainHubCompact"
+
+-- [WINDOW SETUP]
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 450, 0, 250) -- Compact size.
+mainFrame.Position = UDim2.new(0.5, -225, 0.5, -125)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true -- Standard drag enabled.
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
+
+-- [TITLE BAR]
+local titleBar = Instance.new("Frame", mainFrame)
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 8)
+
+local titleLabel = Instance.new("TextLabel", titleBar)
+titleLabel.Text = "RainHub | Compact"
+titleLabel.Size = UDim2.new(1, -60, 1, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+
+-- [CONTROLS]
+local isMinimized = false
+local defaultSize = mainFrame.Size
+
+-- Minimize Button (-)
+local minBtn = Instance.new("TextButton", titleBar)
+minBtn.Size = UDim2.new(0, 30, 1, 0)
+minBtn.Position = UDim2.new(1, -60, 0, 0)
+minBtn.Text = "-"
+minBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+minBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    local targetSize = isMinimized and UDim2.new(0, 450, 0, 30) or defaultSize
+    TweenService:Create(mainFrame, TweenInfo.new(0.2), {Size = targetSize}):Play()
+end)
+
+-- Close Button (X)
+local closeBtn = Instance.new("TextButton", titleBar)
+closeBtn.Size = UDim2.new(0, 30, 1, 0)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.Text = "X"
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy() -- Nuke it.
+end)
+
+print("[RAINHUB] Compact mode active. Gas VORD! ⚡")
