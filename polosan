@@ -1,0 +1,641 @@
+-- Delta Executor UI Template (Safe Placeholder)
+-- Author: Assistant (adapt for your needs)
+-- Paste into a LocalScript under StarterPlayerScripts or StarterGui
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- ======= Config =======
+local UI_WIDTH = 720
+local UI_HEIGHT = 420
+local THEME = {
+    bg = Color3.fromRGB(18,18,20),
+    panel = Color3.fromRGB(28,28,30),
+    accent = Color3.fromRGB(86, 101, 255),
+    text = Color3.fromRGB(230,230,235),
+    subtext = Color3.fromRGB(170,170,180),
+    glow = Color3.fromRGB(120,130,255)
+}
+
+-- ======= Helpers =======
+local function create(class, props)
+    local obj = Instance.new(class)
+    for k,v in pairs(props or {}) do
+        if k == "Parent" then
+            obj.Parent = v
+        else
+            obj[k] = v
+        end
+    end
+    return obj
+end
+
+local function roundCorners(frame, radius)
+    local uicorner = Instance.new("UICorner", frame)
+    uicorner.CornerRadius = UDim.new(0, radius or 8)
+end
+
+local function makeShadow(parent)
+    local shadow = create("ImageLabel", {
+        Parent = parent,
+        Name = "Shadow",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 20, 1, 20),
+        Position = UDim2.new(0, -10, 0, -10),
+        Image = "rbxassetid://6014261993", -- subtle shadow asset
+        ScaleType = Enum.ScaleType.Slice,
+        SliceCenter = Rect.new(10,10,118,118),
+        ZIndex = 0,
+    })
+    shadow.ImageColor3 = Color3.new(0,0,0)
+    shadow.ImageTransparency = 0.85
+end
+
+-- ======= Root UI =======
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local screenGui = create("ScreenGui", {Parent = playerGui, Name = "DeltaExecutorUI", ZIndexBehavior = Enum.ZIndexBehavior.Sibling})
+
+local main = create("Frame", {
+    Parent = screenGui,
+    Name = "Main",
+    Size = UDim2.new(0, UI_WIDTH, 0, UI_HEIGHT),
+    Position = UDim2.new(0.5, -UI_WIDTH/2, 0.5, -UI_HEIGHT/2),
+    BackgroundColor3 = THEME.bg,
+    BorderSizePixel = 0,
+})
+roundCorners(main, 12)
+makeShadow(main)
+
+-- Top bar (title + status)
+local topBar = create("Frame", {
+    Parent = main,
+    Name = "TopBar",
+    Size = UDim2.new(1, 0, 0, 56),
+    BackgroundTransparency = 1,
+})
+local title = create("TextLabel", {
+    Parent = topBar,
+    Text = "DELTA EXECUTOR",
+    Font = Enum.Font.GothamBold,
+    TextSize = 20,
+    TextColor3 = THEME.text,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 18, 0, 12),
+    Size = UDim2.new(0.5, 0, 0, 32),
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+local statusFrame = create("Frame", {
+    Parent = topBar,
+    Size = UDim2.new(0, 220, 0, 36),
+    Position = UDim2.new(1, -238, 0, 10),
+    BackgroundColor3 = THEME.panel,
+})
+roundCorners(statusFrame, 8)
+local fpsLabel = create("TextLabel", {
+    Parent = statusFrame,
+    Text = "FPS: 60",
+    Font = Enum.Font.Gotham,
+    TextSize = 14,
+    TextColor3 = THEME.subtext,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 12, 0, 6),
+    Size = UDim2.new(0.5, -12, 1, -12),
+    TextXAlignment = Enum.TextXAlignment.Left,
+})
+local connLabel = create("TextLabel", {
+    Parent = statusFrame,
+    Text = "Status: Connect",
+    Font = Enum.Font.Gotham,
+    TextSize = 14,
+    TextColor3 = Color3.fromRGB(120, 255, 140),
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0.5, 0, 0, 6),
+    Size = UDim2.new(0.5, -12, 1, -12),
+    TextXAlignment = Enum.TextXAlignment.Right,
+})
+
+-- Left sidebar (tabs)
+local sidebar = create("Frame", {
+    Parent = main,
+    Name = "Sidebar",
+    Size = UDim2.new(0, 140, 1, -66),
+    Position = UDim2.new(0, 12, 0, 64),
+    BackgroundColor3 = THEME.panel,
+})
+roundCorners(sidebar, 10)
+
+local tabs = {"Dashboard","Teleport","Troll","Misc","Aimbot","ESP"}
+local tabButtons = {}
+local contentFrames = {}
+
+local function clearActive()
+    for _,btn in ipairs(tabButtons) do
+        btn.BackgroundColor3 = THEME.panel
+        btn.TextColor3 = THEME.text
+    end
+    for _,f in pairs(contentFrames) do
+        f.Visible = false
+    end
+end
+
+-- Create content area
+local contentArea = create("Frame", {
+    Parent = main,
+    Name = "ContentArea",
+    Size = UDim2.new(1, -176, 1, -66),
+    Position = UDim2.new(0, 164, 0, 64),
+    BackgroundColor3 = Color3.fromRGB(12,12,14),
+})
+roundCorners(contentArea, 10)
+
+-- Create tab buttons and content frames
+for i, name in ipairs(tabs) do
+    local btn = create("TextButton", {
+        Parent = sidebar,
+        Name = name .. "Btn",
+        Size = UDim2.new(1, -16, 0, 40),
+        Position = UDim2.new(0, 8, 0, 8 + (i-1)*48),
+        BackgroundColor3 = THEME.panel,
+        Text = name,
+        Font = Enum.Font.GothamSemibold,
+        TextSize = 14,
+        TextColor3 = THEME.text,
+    })
+    roundCorners(btn, 8)
+    table.insert(tabButtons, btn)
+
+    local frame = create("Frame", {
+        Parent = contentArea,
+        Name = name .. "Frame",
+        Size = UDim2.new(1, -24, 1, -24),
+        Position = UDim2.new(0, 12, 0, 12),
+        BackgroundTransparency = 1,
+        Visible = false,
+    })
+    contentFrames[name] = frame
+
+    btn.MouseButton1Click:Connect(function()
+        clearActive()
+        btn.BackgroundColor3 = THEME.accent
+        btn.TextColor3 = Color3.new(1,1,1)
+        frame.Visible = true
+    end)
+end
+
+-- Activate Dashboard by default
+tabButtons[1].BackgroundColor3 = THEME.accent
+tabButtons[1].TextColor3 = Color3.new(1,1,1)
+contentFrames["Dashboard"].Visible = true
+
+-- ======= Dashboard Content =======
+do
+    local f = contentFrames["Dashboard"]
+    local header = create("TextLabel", {
+        Parent = f,
+        Text = "Welcome to Delta Executor",
+        Font = Enum.Font.GothamBold,
+        TextSize = 20,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(1, 0, 0, 28),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local infoCard = create("Frame", {
+        Parent = f,
+        Size = UDim2.new(1, 0, 0, 120),
+        Position = UDim2.new(0, 0, 0, 36),
+        BackgroundColor3 = THEME.panel,
+    })
+    roundCorners(infoCard, 10)
+
+    local usernameLabel = create("TextLabel", {
+        Parent = infoCard,
+        Text = "Username: " .. LocalPlayer.Name,
+        Font = Enum.Font.Gotham,
+        TextSize = 16,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 12, 0, 12),
+        Size = UDim2.new(0.5, 0, 0, 22),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local runtimeLabel = create("TextLabel", {
+        Parent = infoCard,
+        Text = "Runtime: 00:00:00",
+        Font = Enum.Font.Gotham,
+        TextSize = 14,
+        TextColor3 = THEME.subtext,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 12, 0, 40),
+        Size = UDim2.new(0.5, 0, 0, 20),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local versionLabel = create("TextLabel", {
+        Parent = infoCard,
+        Text = "Version: v2.6.1",
+        Font = Enum.Font.Gotham,
+        TextSize = 14,
+        TextColor3 = THEME.subtext,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, 12, 0, 12),
+        Size = UDim2.new(0.5, -24, 0, 20),
+        TextXAlignment = Enum.TextXAlignment.Right,
+    })
+
+    -- Quick actions
+    local actions = {"Execute Script","Open Script","Clear Console","Attach","Inject"}
+    for i,act in ipairs(actions) do
+        local aBtn = create("TextButton", {
+            Parent = infoCard,
+            Text = act,
+            Font = Enum.Font.Gotham,
+            TextSize = 14,
+            TextColor3 = THEME.text,
+            BackgroundColor3 = Color3.fromRGB(40,40,44),
+            Size = UDim2.new(0, 120, 0, 28),
+            Position = UDim2.new(0, 12 + (i-1)*128, 0, 72),
+        })
+        roundCorners(aBtn, 6)
+        aBtn.MouseButton1Click:Connect(function()
+            -- Placeholder action
+            print("[QuickAction] "..act.." pressed")
+        end)
+    end
+
+    -- Runtime updater
+    local startTime = tick()
+    RunService.Heartbeat:Connect(function()
+        local elapsed = math.floor(tick() - startTime)
+        local h = math.floor(elapsed/3600)
+        local m = math.floor((elapsed%3600)/60)
+        local s = elapsed%60
+        runtimeLabel.Text = string.format("Runtime: %02d:%02d:%02d", h,m,s)
+    end)
+end
+
+-- ======= Teleport Content (safe: list only) =======
+do
+    local f = contentFrames["Teleport"]
+    local header = create("TextLabel", {
+        Parent = f,
+        Text = "Teleport (Safe Placeholder)",
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0,0,0,0),
+        Size = UDim2.new(1,0,0,24),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local listFrame = create("ScrollingFrame", {
+        Parent = f,
+        Name = "PlayerList",
+        Size = UDim2.new(0.45, 0, 1, -36),
+        Position = UDim2.new(0, 0, 0, 36),
+        BackgroundColor3 = THEME.panel,
+        CanvasSize = UDim2.new(0,0,0,0),
+        ScrollBarThickness = 6,
+    })
+    roundCorners(listFrame, 8)
+
+    local uiList = create("UIListLayout", {Parent = listFrame})
+    uiList.Padding = UDim.new(0,6)
+
+    local infoPanel = create("Frame", {
+        Parent = f,
+        Size = UDim2.new(0.52, 0, 1, -36),
+        Position = UDim2.new(0.48, 12, 0, 36),
+        BackgroundColor3 = THEME.panel,
+    })
+    roundCorners(infoPanel, 8)
+
+    local selectedLabel = create("TextLabel", {
+        Parent = infoPanel,
+        Text = "Selected: None",
+        Font = Enum.Font.Gotham,
+        TextSize = 16,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0,12,0,12),
+        Size = UDim2.new(1,-24,0,24),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local teleportBtn = create("TextButton", {
+        Parent = infoPanel,
+        Text = "Teleport (Placeholder)",
+        Font = Enum.Font.GothamSemibold,
+        TextSize = 16,
+        TextColor3 = Color3.new(1,1,1),
+        BackgroundColor3 = THEME.accent,
+        Size = UDim2.new(0, 200, 0, 36),
+        Position = UDim2.new(0,12,0,56),
+    })
+    roundCorners(teleportBtn, 8)
+
+    local selectedPlayer = nil
+    teleportBtn.MouseButton1Click:Connect(function()
+        if selectedPlayer then
+            -- SAFE: only placeholder action
+            print("[Teleport] Requested teleport to:", selectedPlayer.Name)
+        else
+            print("[Teleport] No player selected")
+        end
+    end)
+
+    local function refreshPlayerList()
+        -- Clear
+        for _,v in ipairs(listFrame:GetChildren()) do
+            if v:IsA("TextButton") then v:Destroy() end
+        end
+        local y = 6
+        for _,plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                local btn = create("TextButton", {
+                    Parent = listFrame,
+                    Text = plr.Name,
+                    Font = Enum.Font.Gotham,
+                    TextSize = 14,
+                    TextColor3 = THEME.text,
+                    BackgroundColor3 = Color3.fromRGB(36,36,38),
+                    Size = UDim2.new(1, -12, 0, 32),
+                })
+                roundCorners(btn, 6)
+                btn.MouseButton1Click:Connect(function()
+                    selectedPlayer = plr
+                    selectedLabel.Text = "Selected: " .. plr.Name
+                end)
+                y = y + 38
+            end
+        end
+        listFrame.CanvasSize = UDim2.new(0,0,0,y)
+    end
+
+    refreshPlayerList()
+    Players.PlayerAdded:Connect(refreshPlayerList)
+    Players.PlayerRemoving:Connect(function() task.wait(0.2); refreshPlayerList() end)
+end
+
+-- ======= Aimbot Content (UI only) =======
+do
+    local f = contentFrames["Aimbot"]
+    local header = create("TextLabel", {
+        Parent = f,
+        Text = "Aimbot (UI Placeholder)",
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0,0,0,0),
+        Size = UDim2.new(1,0,0,24),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local card = create("Frame", {
+        Parent = f,
+        Size = UDim2.new(1,0,0,220),
+        Position = UDim2.new(0,0,0,36),
+        BackgroundColor3 = THEME.panel,
+    })
+    roundCorners(card, 10)
+
+    -- Mode buttons: Rage / Legit / Normal
+    local modes = {"Rage","Legit","Normal"}
+    local modeButtons = {}
+    for i,mode in ipairs(modes) do
+        local b = create("TextButton", {
+            Parent = card,
+            Text = mode,
+            Font = Enum.Font.GothamSemibold,
+            TextSize = 14,
+            TextColor3 = THEME.text,
+            BackgroundColor3 = Color3.fromRGB(40,40,44),
+            Size = UDim2.new(0, 120, 0, 36),
+            Position = UDim2.new(0, 12 + (i-1)*132, 0, 12),
+        })
+        roundCorners(b, 8)
+        b.MouseButton1Click:Connect(function()
+            print("[Aimbot] Mode set to:", mode)
+            for _,btn in ipairs(modeButtons) do
+                btn.BackgroundColor3 = Color3.fromRGB(40,40,44)
+            end
+            b.BackgroundColor3 = THEME.accent
+        end)
+        table.insert(modeButtons, b)
+    end
+
+    -- FOV slider (visual only)
+    local fovLabel = create("TextLabel", {
+        Parent = card,
+        Text = "FOV: 90",
+        Font = Enum.Font.Gotham,
+        TextSize = 14,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0,12,0,64),
+        Size = UDim2.new(0,200,0,20),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local sliderBar = create("Frame", {
+        Parent = card,
+        BackgroundColor3 = Color3.fromRGB(36,36,38),
+        Position = UDim2.new(0,12,0,92),
+        Size = UDim2.new(0, 360, 0, 12),
+    })
+    roundCorners(sliderBar, 8)
+
+    local knob = create("Frame", {
+        Parent = sliderBar,
+        BackgroundColor3 = THEME.accent,
+        Size = UDim2.new(0, 0.25, 1, 0),
+    })
+    roundCorners(knob, 8)
+
+    local dragging = false
+    local function updateFOVFromKnob()
+        local pct = knob.Size.X.Scale
+        local fov = math.floor(30 + pct * 150) -- 30..180
+        fovLabel.Text = "FOV: " .. tostring(fov)
+    end
+
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+        end
+    end)
+    sliderBar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    RunService.RenderStepped:Connect(function()
+        if dragging then
+            local mouse = game.Players.LocalPlayer:GetMouse()
+            local rel = math.clamp((mouse.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+            knob.Size = UDim2.new(rel, 0, 1, 0)
+            updateFOVFromKnob()
+        end
+    end)
+end
+
+-- ======= ESP Content (UI only) =======
+do
+    local f = contentFrames["ESP"]
+    local header = create("TextLabel", {
+        Parent = f,
+        Text = "ESP (UI Placeholder)",
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0,0,0,0),
+        Size = UDim2.new(1,0,0,24),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    local card = create("Frame", {
+        Parent = f,
+        Size = UDim2.new(1,0,0,160),
+        Position = UDim2.new(0,0,0,36),
+        BackgroundColor3 = THEME.panel,
+    })
+    roundCorners(card, 10)
+
+    local options = {"Skeleton","Line","Box"}
+    for i,opt in ipairs(options) do
+        local cb = create("TextButton", {
+            Parent = card,
+            Text = opt,
+            Font = Enum.Font.Gotham,
+            TextSize = 14,
+            TextColor3 = THEME.text,
+            BackgroundColor3 = Color3.fromRGB(36,36,38),
+            Size = UDim2.new(0, 120, 0, 36),
+            Position = UDim2.new(0, 12 + (i-1)*132, 0, 12),
+        })
+        roundCorners(cb, 8)
+        cb.MouseButton1Click:Connect(function()
+            print("[ESP] Toggle:", opt)
+            if cb.BackgroundColor3 == Color3.fromRGB(36,36,38) then
+                cb.BackgroundColor3 = THEME.accent
+            else
+                cb.BackgroundColor3 = Color3.fromRGB(36,36,38)
+            end
+        end)
+    end
+end
+
+-- ======= Troll & Misc (UI only) =======
+do
+    local f = contentFrames["Troll"]
+    local header = create("TextLabel", {
+        Parent = f,
+        Text = "Troll (Placeholders)",
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0,0,0,0),
+        Size = UDim2.new(1,0,0,24),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+    local f2 = contentFrames["Misc"]
+    local header2 = create("TextLabel", {
+        Parent = f2,
+        Text = "Misc (Placeholders)",
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+        TextColor3 = THEME.text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0,0,0,0),
+        Size = UDim2.new(1,0,0,24),
+        TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    -- Example placeholder buttons
+    for i=1,4 do
+        local b = create("TextButton", {
+            Parent = f,
+            Text = "Troll Action "..i,
+            Font = Enum.Font.Gotham,
+            TextSize = 14,
+            TextColor3 = THEME.text,
+            BackgroundColor3 = Color3.fromRGB(36,36,38),
+            Size = UDim2.new(0, 160, 0, 36),
+            Position = UDim2.new(0, 12 + (i-1)*172, 0, 36),
+        })
+        roundCorners(b, 8)
+        b.MouseButton1Click:Connect(function()
+            print("[Troll] Action "..i.." pressed (placeholder)")
+        end)
+    end
+
+    for i=1,4 do
+        local b = create("TextButton", {
+            Parent = f2,
+            Text = "Misc Option "..i,
+            Font = Enum.Font.Gotham,
+            TextSize = 14,
+            TextColor3 = THEME.text,
+            BackgroundColor3 = Color3.fromRGB(36,36,38),
+            Size = UDim2.new(0, 160, 0, 36),
+            Position = UDim2.new(0, 12 + (i-1)*172, 0, 36),
+        })
+        roundCorners(b, 8)
+        b.MouseButton1Click:Connect(function()
+            print("[Misc] Option "..i.." pressed (placeholder)")
+        end)
+    end
+end
+
+-- ======= Finishing touches: draggable, open/close =======
+do
+    -- Draggable main frame
+    local dragging, dragInput, dragStart, startPos
+    main.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    main.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    RunService.RenderStepped:Connect(function()
+        if dragging and dragInput then
+            local delta = dragInput.Position - dragStart
+            main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- Simple open/close hotkey (RightControl)
+    local open = true
+    local function toggleUI()
+        open = not open
+        main.Visible = open
+    end
+    game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.RightControl then
+            toggleUI()
+        end
+    end)
+end
+
+print("[DeltaExecutorUI] UI loaded (safe placeholders). Customize logic a
